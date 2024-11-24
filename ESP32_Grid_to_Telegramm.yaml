@@ -1,6 +1,6 @@
 substitutions:
-  TELEGRAM_BOT_TOKEN: !secret TELEGRAM_BOT_TOKEN
-  chat_id: "5675765765768"
+  TELEGRAM_BOT_TOKEN: "sfgggfgTELEGRAM_ BOT _TOKEN"
+  chat_id: "-5675765765768"
 
 esphome:
   name: 220grid_sensor
@@ -76,7 +76,12 @@ binary_sensor:
               Content-Type: application/json
             json:
               chat_id: ${chat_id}
-              text: "Grid is OFF :("
+              #text: "Grid is OFF 😠"
+              text: !lambda |-
+                if (id(Binary_sensor_inversion).state) 
+                {return "Grid is ON 😀";
+                } else {return "Grid is OFF 😠";
+                } 
     on_release:
     #  min_length: 150ms
     #  max_length: 5s
@@ -89,10 +94,35 @@ binary_sensor:
               Content-Type: application/json
             json:
               chat_id: ${chat_id}
-              text: "Grid is ON :)"
+              text: !lambda |-
+                if (id(Binary_sensor_inversion).state) 
+                {return "Grid is OFF 😠";
+                } else {return "Grid is ON 😀";
+                } 
+              #text: "Grid is ON 😀"
+  - platform: gpio
+    internal: false
+    name: "inversion"
+    pin:
+      #number: GPIO14 - D5
+      number: GPIO14
+      inverted: false
+    id: Binary_sensor_inversion
+    filters:
+      delayed_on_off: 1000ms
+    on_press:
+      #  min_length: 150ms
+      #  max_length: 5s
+      then:
+          #- switch.toggle: pym_output_relay send http  
+    on_release:
+      #  min_length: 150ms
+      #  max_length: 5s
+      then:
+        #- switch.toggle: pym_output_relay send http
 
 web_server: 
   port: 8080
-
-
-
+  auth:
+    username: admin
+    password: admin
