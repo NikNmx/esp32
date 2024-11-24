@@ -1,0 +1,98 @@
+substitutions:
+  TELEGRAM_BOT_TOKEN: !secret TELEGRAM_BOT_TOKEN
+  chat_id: "5675765765768"
+
+esphome:
+  name: 220grid_sensor
+  friendly_name: 220grid_sensor
+
+esp8266:
+  board: d1_mini
+
+# Enable logging
+logger:
+
+# Enable Home Assistant API
+api:
+  password: "1234567890"
+
+ota:
+  - platform: esphome
+    password: "1234567890"
+
+wifi:
+  ssid: "esptool"
+  password: "1111qQ1111qQ,@,@"
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: "ap_espD1grid"
+    password: "1234567890"
+
+captive_portal:
+
+#status_led:
+#  pin: GPIO2
+
+output:
+  - platform: gpio
+    pin: GPIO2
+    id: led1_output
+    inverted: false
+
+light:
+  - platform: binary
+    name: "Led1"
+    id: Led1
+    #pin: GPIO2
+    output: led1_output
+
+http_request:
+  useragent: esphome/device
+  timeout: 10s
+  verify_ssl: false
+
+
+binary_sensor:
+  - platform: gpio
+    internal: false
+    name: "Binary_sensor1_grid_status_buro"
+    pin:
+      #number: GPIO12 - D6
+      number: GPIO12
+      inverted: false
+    id: Binary_sensor1_grid_status
+    filters:
+      delayed_on_off: 10000ms
+    on_press:
+    #  min_length: 150ms
+    #  max_length: 5s
+      then:
+        #- switch.toggle: pym_output_relay send http
+        - light.turn_on: Led1
+        - http_request.post:
+            url: "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage"
+            headers:
+              Content-Type: application/json
+            json:
+              chat_id: ${chat_id}
+              text: "Grid is OFF :("
+    on_release:
+    #  min_length: 150ms
+    #  max_length: 5s
+      then:
+        #- switch.toggle: pym_output_relay send http
+        - light.turn_off: Led1
+        - http_request.post:
+            url: "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage"
+            headers:
+              Content-Type: application/json
+            json:
+              chat_id: ${chat_id}
+              text: "Grid is ON :)"
+
+web_server: 
+  port: 8080
+
+
+
