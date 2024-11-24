@@ -39,6 +39,10 @@ output:
     pin: GPIO2
     id: led1_output
     inverted: false
+              #if (id(Binary_sensor_inversion).state) 
+              #{return "true";
+              #} else {return "false";
+              #} 
 
 light:
   - platform: binary
@@ -69,7 +73,14 @@ binary_sensor:
     #  max_length: 5s
       then:
         #- switch.toggle: pym_output_relay send http
-        - light.turn_on: Led1
+        - lambda: |
+            if (id(Binary_sensor_inversion).state) 
+                { auto call = id(Led1).turn_off();
+                  call.perform();
+                } else { auto call = id(Led1).turn_on();
+                  call.perform();
+                }
+        #- light.turn_on: Led1
         - http_request.post:
             url: "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage"
             headers:
@@ -87,7 +98,14 @@ binary_sensor:
     #  max_length: 5s
       then:
         #- switch.toggle: pym_output_relay send http
-        - light.turn_off: Led1
+        - lambda: |
+            if (id(Binary_sensor_inversion).state) 
+                { auto call = id(Led1).turn_on();
+                  call.perform();
+                } else { auto call = id(Led1).turn_off();
+                  call.perform();
+                }
+        #- light.turn_off: Led1
         - http_request.post:
             url: "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage"
             headers:
