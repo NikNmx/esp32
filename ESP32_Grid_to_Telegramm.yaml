@@ -13,8 +13,8 @@ substitutions:
   trigger1: "1"
 
 esphome:
-  name: 220grid_sensor
-  friendly_name: 220grid_sensor
+  name: 220gridsensor
+  friendly_name: 220gridsensor
 
 esp8266:
   board: d1_mini
@@ -22,7 +22,12 @@ esp8266:
 # Enable logging
 logger:
 
-          
+globals:
+#blink counter
+   - id: global_var_int1
+     type: int
+     restore_value: no
+     initial_value: '0'          
 
 # Enable Home Assistant API
 #api:
@@ -80,13 +85,22 @@ time:
       # Every 5 minutes
       - seconds: /5
         then: 
-          - lambda: |
-             auto call2 = id(Led2).turn_off();
+        #C++ lambda inserted
+          - lambda: |-
+              if (id(global_var_int1) > 5) {
+                  //# global value is greater than 5
+                  id(global_var_int1) = 0;
+                  auto call2 = id(Led2).turn_off();
                   call2.perform();
-             //# trigger1 = "1"
-             //#   - light.turn_on: Led1
-             //#   - delay: 1s
-             //#   - light.turn_off: Led1
+              } else {
+                  id(global_var_int1) += 1;
+                  auto call2 = id(Led2).turn_on();
+                  call2.perform();
+                  }   
+                  //# trigger1 = "1"
+                  //#   - light.turn_on: Led1
+                  //#   - delay: 1s
+                  //#   - light.turn_off: Led1
 
 http_request:
   useragent: esphome/device
@@ -198,3 +212,4 @@ web_server:
   auth:
     username: admin
     password: admin
+    
