@@ -1,6 +1,16 @@
+#GPIO12 - D6 - grid binary_sensore "0" - Grid is available (220V), 
+#"1" - Grid is absent (0V)
+#
+#GPIO14 - D5 binary conf pin . if = "1" - GPIO12 -D6 is inverted
+#grid binary_sensore "0" - Grid is absent (0V), 
+#"1" - Grid is available (220V)
+#
+#GPIO2 - D4 - Internal Led (id="Led1) inverted:true
+#GPIO5 - D1 - External Led (id="Led2) inverted:false
 substitutions:
   TELEGRAM_BOT_TOKEN: !secret sTELEGRAM_BOT_TOKEN
   chat_id: !secret schat_id
+  trigger1: "1"
 
 esphome:
   name: 220grid_sensor
@@ -12,9 +22,11 @@ esp8266:
 # Enable logging
 logger:
 
+          
+
 # Enable Home Assistant API
-api:
-  password: "1234567890"
+#api:
+#  password: "1234567890"
 
 ota:
   - platform: esphome
@@ -43,6 +55,11 @@ output:
               #{return "true";
               #} else {return "false";
               #} 
+  - platform: gpio
+    pin: GPIO5
+    id: led2_output
+    inverted: false #if true LED is on when Grid is Absent OK!
+          
 
 light:
   - platform: binary
@@ -50,6 +67,26 @@ light:
     id: Led1
     #pin: GPIO2
     output: led1_output
+  - platform: binary
+    name: "Led2"
+    id: Led2
+    #pin: GPIO5
+    output: led2_output 
+    
+time:
+  - platform: sntp
+    # ...
+    on_time:
+      # Every 5 minutes
+      - seconds: /5
+        then: 
+          - lambda: |
+             auto call2 = id(Led2).turn_off();
+                  call2.perform();
+             //# trigger1 = "1"
+             //#   - light.turn_on: Led1
+             //#   - delay: 1s
+             //#   - light.turn_off: Led1
 
 http_request:
   useragent: esphome/device
@@ -68,6 +105,15 @@ binary_sensor:
     id: Binary_sensor1_grid_status
     filters:
       delayed_on_off: 10000ms
+#on state
+    on_state:
+      then:
+        - light.turn_on: Led2
+        - delay: 1s
+        - light.turn_off: Led2
+        - delay: 1s 
+#end of state    
+
     on_press:
     #  min_length: 150ms
     #  max_length: 5s
@@ -77,8 +123,12 @@ binary_sensor:
             if (id(Binary_sensor_inversion).state) 
                 { auto call = id(Led1).turn_off();
                   call.perform();
+                  auto call2 = id(Led2).turn_off();
+                  call2.perform();
                 } else { auto call = id(Led1).turn_on();
                   call.perform();
+                  auto call2 = id(Led2).turn_on();
+                  call2.perform();
                 }
         #- light.turn_on: Led1
         - http_request.post:
@@ -102,8 +152,12 @@ binary_sensor:
             if (id(Binary_sensor_inversion).state) 
                 { auto call = id(Led1).turn_on();
                   call.perform();
+                  auto call2 = id(Led2).turn_on();
+                  call2.perform();
                 } else { auto call = id(Led1).turn_off();
                   call.perform();
+                  auto call2 = id(Led2).turn_off();
+                  call2.perform();
                 }
         #- light.turn_off: Led1
         - http_request.post:

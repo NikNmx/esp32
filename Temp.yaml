@@ -1,0 +1,16 @@
+Temp
+# Example configuration entry
+switch:
+  - platform: gpio
+    pin: GPIOXX
+    id: relay
+    name: "Gate Remote"
+    icon: "mdi:gate"
+    on_turn_on:
+    - delay: 500ms
+    - switch.turn_off: relay
+
+
+on_turn_on:
+
+    - delay: 500ms
