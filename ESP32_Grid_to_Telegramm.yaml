@@ -1,6 +1,6 @@
 substitutions:
-  TELEGRAM_BOT_TOKEN: "sfgggfgTELEGRAM_ BOT _TOKEN"
-  chat_id: "-5675765765768"
+  TELEGRAM_BOT_TOKEN: !secret sTELEGRAM_BOT_TOKEN
+  chat_id: !secret schat_id
 
 esphome:
   name: 220grid_sensor
