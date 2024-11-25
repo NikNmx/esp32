@@ -1,6 +1,0 @@
-esphome:
-  name: relay
-  friendly_name: Relay DOU
-
-esp8266:
-  board: nodemcuv2
