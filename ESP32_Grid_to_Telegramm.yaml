@@ -125,6 +125,7 @@ binary_sensor:
       #number: GPIO12 - D6
       number: GPIO12
       inverted: false
+      pullup: true
     id: Binary_sensor_grid_status
     filters:
       delayed_on_off: 10000ms
@@ -202,6 +203,7 @@ binary_sensor:
       #number: GPIO14 - D5
       number: GPIO14
       inverted: false
+      pullup: true
     id: Binary_sensor_inversion
     filters:
       delayed_on_off: 1000ms
