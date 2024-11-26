@@ -23,11 +23,16 @@ esp8266:
 logger:
 
 globals:
-#blink counter
+#blink couter 
    - id: global_var_int1
      type: int
-     restore_value: no
-     initial_value: '0'          
+     restore_value: yes
+     initial_value: '0'
+   - id: global_var_flashing
+     type: int
+     restore_value: yes
+     initial_value: '0'
+                  
 
 # Enable Home Assistant API
 #api:
@@ -63,7 +68,7 @@ output:
   - platform: gpio
     pin: GPIO5
     id: led2_output
-    inverted: false #if true LED is on when Grid is Absent OK!
+    inverted: true #if true LED is on when Grid is Absent OK!
           
 
 light:
@@ -82,25 +87,29 @@ time:
   - platform: sntp
     # ...
     on_time:
-      # Every 5 minutes
-      - seconds: /5
+      # Every  seconds
+      - seconds: /1
         then: 
         #C++ lambda inserted
           - lambda: |-
-              if (id(global_var_int1) > 5) {
-                  //# global value is greater than 5
+              if (id(global_var_flashing) == 1 ) 
+              {
+                  if (id(global_var_int1) != 0) 
+                  {
+                  //# global value is 0
                   id(global_var_int1) = 0;
-                  auto call2 = id(Led2).turn_off();
-                  call2.perform();
-              } else {
-                  id(global_var_int1) += 1;
                   auto call2 = id(Led2).turn_on();
                   call2.perform();
-                  }   
-                  //# trigger1 = "1"
-                  //#   - light.turn_on: Led1
-                  //#   - delay: 1s
-                  //#   - light.turn_off: Led1
+
+                  } else {
+                  id(global_var_int1) = 1;
+                
+                  auto call2 = id(Led2).turn_off();
+                  call2.perform();
+                  }
+              }       
+                  
+          - logger.log: "global_var_int1,  id(global_var_int1)"    
 
 http_request:
   useragent: esphome/device
@@ -116,16 +125,16 @@ binary_sensor:
       #number: GPIO12 - D6
       number: GPIO12
       inverted: false
-    id: Binary_sensor1_grid_status
+    id: Binary_sensor_grid_status
     filters:
       delayed_on_off: 10000ms
 #on state
     on_state:
       then:
-        - light.turn_on: Led2
-        - delay: 1s
-        - light.turn_off: Led2
-        - delay: 1s 
+        #- light.turn_on: Led2
+        #- delay: 1s
+        #- light.turn_off: Led2
+        #- delay: 1s 
 #end of state    
 
     on_press:
@@ -137,11 +146,11 @@ binary_sensor:
             if (id(Binary_sensor_inversion).state) 
                 { auto call = id(Led1).turn_off();
                   call.perform();
-                  auto call2 = id(Led2).turn_off();
+                  auto call2 = id(Led1).turn_off();
                   call2.perform();
                 } else { auto call = id(Led1).turn_on();
                   call.perform();
-                  auto call2 = id(Led2).turn_on();
+                  auto call2 = id(Led1).turn_on();
                   call2.perform();
                 }
         #- light.turn_on: Led1
@@ -166,11 +175,11 @@ binary_sensor:
             if (id(Binary_sensor_inversion).state) 
                 { auto call = id(Led1).turn_on();
                   call.perform();
-                  auto call2 = id(Led2).turn_on();
+                  auto call2 = id(Led1).turn_on();
                   call2.perform();
                 } else { auto call = id(Led1).turn_off();
                   call.perform();
-                  auto call2 = id(Led2).turn_off();
+                  auto call2 = id(Led1).turn_off();
                   call2.perform();
                 }
         #- light.turn_off: Led1
