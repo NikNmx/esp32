@@ -93,3 +93,19 @@ lambda: |-
   static int num_executions = 0;
   ESP_LOGD("main", "I am at execution number %d", num_executions);
   num_executions += 1;
+
+
+
+- repeat:
+      count: 5
+      then:
+        - light.turn_on: some_light
+        - delay: 1s
+        - light.turn_off: some_light
+        - delay: 10s
+
+on_boot:
+    priority: 600
+    # ...
+    then:
+      - switch.turn_off: switch_1        

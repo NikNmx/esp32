@@ -15,6 +15,37 @@ substitutions:
 esphome:
   name: 220gridsensor
   friendly_name: 220gridsensor
+#start after reboot device
+  on_boot:
+    priority: 600
+    #some default actions
+    then:
+      - delay: 60s
+      - lambda : |-
+             if (id(Binary_sensor_grid_status)) {
+               id(global_var_flashing) = 1;
+             }
+             else {
+               id(global_var_flashing) = 0;
+             }
+      - script.execute: send_rebooted
+      #- http_request.post:
+      #   url: "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage"
+      #    headers:
+      #     Content-Type: application/json
+      #    json:
+      #      chat_id: ${chat_id}
+      #      text: "Rebooted!!!"       
+
+
+
+      - repeat:
+          count: 1
+          then:
+            - light.turn_on: Led1
+            - delay: 500ms
+            - light.turn_off: Led1
+            - delay: 2s      
 
 esp8266:
   board: d1_mini
@@ -31,7 +62,7 @@ globals:
    - id: global_var_flashing
      type: int
      restore_value: yes
-     initial_value: '0'
+     initial_value: '1'
                   
 
 # Enable Home Assistant API
@@ -92,22 +123,22 @@ time:
         then: 
         #C++ lambda inserted
           - lambda: |-
-              if (id(global_var_flashing) == 1 ) 
-              {
-                  if (id(global_var_int1) != 0) 
-                  {
-                  //# global value is 0
-                  id(global_var_int1) = 0;
-                  auto call2 = id(Led2).turn_on();
-                  call2.perform();
-
-                  } else {
-                  id(global_var_int1) = 1;
-                
-                  auto call2 = id(Led2).turn_off();
-                  call2.perform();
-                  }
-              }       
+                      if (id(global_var_flashing) == 1 ) 
+                      {
+                        if (id(global_var_int1) != 0) 
+                        {
+                          //# global value is 0
+                          id(global_var_int1) = 0;
+                          auto call2 = id(Led2).turn_on();
+                          call2.perform();
+                        } else {
+                            id(global_var_int1) = 1;
+                            auto call2 = id(Led2).turn_off();
+                            call2.perform();
+                        }
+                      } else { 
+                          id(script1).execute();  
+                      }       
                   
           - logger.log: "global_var_int1,  id(global_var_int1)"    
 
@@ -120,12 +151,12 @@ http_request:
 binary_sensor:
   - platform: gpio
     internal: false
-    name: "Binary_sensor1_grid_status_buro"
+    name: "Sensor1_grid_is_absent"
     pin:
       #number: GPIO12 - D6
       number: GPIO12
       inverted: false
-      pullup: true
+      #
     id: Binary_sensor_grid_status
     filters:
       delayed_on_off: 10000ms
@@ -143,17 +174,17 @@ binary_sensor:
     #  max_length: 5s
       then:
         #- switch.toggle: pym_output_relay send http
-        - lambda: |
-            if (id(Binary_sensor_inversion).state) 
-                { auto call = id(Led1).turn_off();
-                  call.perform();
-                  auto call2 = id(Led1).turn_off();
-                  call2.perform();
-                } else { auto call = id(Led1).turn_on();
-                  call.perform();
-                  auto call2 = id(Led1).turn_on();
-                  call2.perform();
-                }
+        #- lambda: |
+        #    if (id(Binary_sensor_inversion).state) 
+        #        { auto call = id(Led1).turn_off();
+        #          call.perform();
+        #          auto call2 = id(Led1).turn_off();
+        #          call2.perform();
+        #        } else { auto call = id(Led1).turn_on();
+        #          call.perform();
+        #          auto call2 = id(Led1).turn_on();
+        #          call2.perform();
+        #        }
         #- light.turn_on: Led1
         - http_request.post:
             url: "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage"
@@ -161,28 +192,30 @@ binary_sensor:
               Content-Type: application/json
             json:
               chat_id: ${chat_id}
-              #text: "Grid is OFF 😠"
-              text: !lambda |-
-                if (id(Binary_sensor_inversion).state) 
-                {return "Grid is ON 😀";
-                } else {return "Grid is OFF 😠";
-                } 
+              text: "Grid is OFF 😠"
+              #text: !lambda |-
+              #  if (id(Binary_sensor_inversion).state) 
+              #  {return "Grid is ON 😀";
+              #  } else {return "Grid is OFF 😠";
+              #  } 
+        - lambda: |-
+            id(global_var_flashing) = 1;      
     on_release:
     #  min_length: 150ms
     #  max_length: 5s
       then:
         #- switch.toggle: pym_output_relay send http
-        - lambda: |
-            if (id(Binary_sensor_inversion).state) 
-                { auto call = id(Led1).turn_on();
-                  call.perform();
-                  auto call2 = id(Led1).turn_on();
-                  call2.perform();
-                } else { auto call = id(Led1).turn_off();
-                  call.perform();
-                  auto call2 = id(Led1).turn_off();
-                  call2.perform();
-                }
+        #- lambda: |
+        #    if (id(Binary_sensor_inversion).state) 
+        #        { auto call = id(Led1).turn_on();
+        #          call.perform();
+        #          auto call2 = id(Led1).turn_on();
+        #          call2.perform();
+        #        } else { auto call = id(Led1).turn_off();
+        #          call.perform();
+        #          auto call2 = id(Led1).turn_off();
+        #          call2.perform();
+        #        }
         #- light.turn_off: Led1
         - http_request.post:
             url: "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage"
@@ -190,33 +223,55 @@ binary_sensor:
               Content-Type: application/json
             json:
               chat_id: ${chat_id}
-              text: !lambda |-
-                if (id(Binary_sensor_inversion).state) 
-                {return "Grid is OFF 😠";
-                } else {return "Grid is ON 😀";
-                } 
+              text: "Grid is ON 😀"
+              #text: !lambda |-
+              #  if (id(Binary_sensor_inversion).state) 
+              #  {return "Grid is OFF 😠";
+              #  } else {return "Grid is ON 😀";
+              #  } 
               #text: "Grid is ON 😀"
-  - platform: gpio
-    internal: false
-    name: "inversion"
-    pin:
-      #number: GPIO14 - D5
-      number: GPIO14
-      inverted: false
-      pullup: true
-    id: Binary_sensor_inversion
-    filters:
-      delayed_on_off: 1000ms
-    on_press:
-      #  min_length: 150ms
-      #  max_length: 5s
-      then:
-          #- switch.toggle: pym_output_relay send http  
-    on_release:
-      #  min_length: 150ms
-      #  max_length: 5s
-      then:
-        #- switch.toggle: pym_output_relay send http
+        - lambda: |-
+            id(global_var_flashing) = 0;      
+  #- platform: gpio
+  #  internal: false
+  #  name: "inversion"
+  #  pin:
+  #    #number: GPIO14 - D5
+  #    number: GPIO14
+  #    inverted: false
+      #
+  #  id: Binary_sensor_inversion
+  #  filters:
+  #    delayed_on_off: 1000ms
+  #  #on_press:
+  #  #  #  min_length: 150ms
+  #  #  #  max_length: 5s
+  #  #  then:
+  #  #      #- switch.toggle: pym_output_relay send http  
+  #  #on_release:
+  #  #  #  min_length: 150ms
+  #  #  #  max_length: 5s
+  #  #  then:
+  #  #    #- switch.toggle: pym_output_relay send http
+
+script:
+  - id: script1
+  #  parameters:
+  #    delay_ms: int
+    then:
+      - light.turn_on: Led2
+      - delay: 5ms
+      - light.turn_off: Led2
+  - id: send_rebooted
+    then:
+      - http_request.post:
+          url: "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage"
+          headers:
+            Content-Type: application/json
+          json:
+            chat_id: ${chat_id}
+            text: "Rebooted!!!"       
+
 
 web_server: 
   port: 8080
