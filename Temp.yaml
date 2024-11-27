@@ -1,4 +1,8 @@
 Temp
+
+esphome version
+Version: 2024.11.1
+
 # Example configuration entry
 switch:
   - platform: gpio

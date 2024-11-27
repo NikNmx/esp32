@@ -17,15 +17,14 @@ esphome:
   friendly_name: 220gridsensor
 #start after reboot device
   on_boot:
-    priority: 600
+    priority: -100
     #some default actions
     then:
       - delay: 60s
       - lambda : |-
              if (id(Binary_sensor_grid_status)) {
                id(global_var_flashing) = 1;
-             }
-             else {
+             } else {
                id(global_var_flashing) = 0;
              }
       - script.execute: send_rebooted
@@ -57,11 +56,11 @@ globals:
 #blink couter 
    - id: global_var_int1
      type: int
-     restore_value: yes
+     restore_value: no
      initial_value: '0'
    - id: global_var_flashing
      type: int
-     restore_value: yes
+     restore_value: no
      initial_value: '1'
                   
 
@@ -122,8 +121,11 @@ time:
       - seconds: /1
         then: 
         #C++ lambda inserted
+          - logger.log:
+              format: "global_var_flashing %.1f and global_var_int1 %.1f"
+              args: [ 'id(global_var_flashing)', 'id(global_var_int1)' ]
           - lambda: |-
-                      if (id(global_var_flashing) == 1 ) 
+                      if (id(global_var_flashing) == 1  ) 
                       {
                         if (id(global_var_int1) != 0) 
                         {
@@ -271,7 +273,6 @@ script:
           json:
             chat_id: ${chat_id}
             text: "Rebooted!!!"       
-
 
 web_server: 
   port: 8080
