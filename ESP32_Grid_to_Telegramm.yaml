@@ -274,6 +274,13 @@ script:
             chat_id: ${chat_id}
             text: "Rebooted!!!"       
 
+switch:
+  - platform: gpio
+    pin: GPIO14
+    id: inverse
+    name: "Grid_sensore inversion"
+    restore_mode: RESTORE_DEFAULT_OFF
+
 web_server: 
   port: 8080
   auth:
