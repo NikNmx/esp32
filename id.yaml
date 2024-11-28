@@ -2,3 +2,5 @@ id: Binary_sensor_grid_status
 id: Led1. - light
 id: Led1. - light
 id: script1
+id: global_var_flashing
+id: global_var_int1
