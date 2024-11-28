@@ -15,60 +15,52 @@ substitutions:
 esphome:
   name: 220gridsensor
   friendly_name: 220gridsensor
-#start after reboot device
   on_boot:
-    priority: -100
-    #some default actions
-    then:
-      - delay: 60s
-      - lambda : |-
-             if (id(Binary_sensor_grid_status)) {
-               id(global_var_flashing) = 1;
-             } else {
-               id(global_var_flashing) = 0;
-             }
-      - script.execute: send_rebooted
-      #- http_request.post:
-      #   url: "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage"
-      #    headers:
-      #     Content-Type: application/json
-      #    json:
-      #      chat_id: ${chat_id}
-      #      text: "Rebooted!!!"       
-
-
-
-      - repeat:
-          count: 1
+    priority: -100  # -100 is after reboot and settings WIFI + Pins
+    then:    #setup some global variables
+      - repeat:    #few Led1 blinks afrter reboot
+          count: 5
           then:
             - light.turn_on: Led1
-            - delay: 500ms
+            - delay: 100ms
             - light.turn_off: Led1
-            - delay: 2s      
+            - delay: 100ms      
+      - delay: 20s # because flashinf is continue during boot process.  
+      - logger.log:
+          format: "!!!boot_var_flash %i and bootSensor1_grid  %i"
+          args: [ 'id(global_var_flashing)', 'id(Binary_sensor_grid_status).state' ]
+      - lambda : |-
+                  if (id(Binary_sensor_grid_status).state) {
+                  id(global_var_flashing) = 1;
+                  } else {
+                  id(global_var_flashing) = 0;
+                  }
+      - script.execute: send_rebooted # script steps after reboot
 
 esp8266:
   board: d1_mini
+  restore_from_flash: true
 
 # Enable logging
 logger:
 
 globals:
 #blink couter 
-   - id: global_var_int1
+   - id: global_var_int1 #it is for blinking, may be replaced for static lambda variable
      type: int
      restore_value: no
-     initial_value: '0'
-   - id: global_var_flashing
+     initial_value: "0"
+   - id: global_var_flashing # if == 1 , LED2 is blinking every 1s.
      type: int
      restore_value: no
-     initial_value: '1'
+     initial_value: "1"
                   
 
-# Enable Home Assistant API
+# Enable API  # Does not use in this configuration.
 #api:
 #  password: "1234567890"
 
-ota:
+ota: # maybe used in fallback ap portal. I'm not sure.
   - platform: esphome
     password: "1234567890"
 
@@ -78,32 +70,26 @@ wifi:
 
   # Enable fallback hotspot (captive portal) in case wifi connection fails
   ap:
-    ssid: "ap_espD1grid"
-    password: "1234567890"
+    ssid: "ap_buro_grid"
+    password: "1111qQ1111qQ,@,@"
 
 captive_portal:
 
-#status_led:
-#  pin: GPIO2
-
 output:
-  - platform: gpio
-    pin: GPIO2
+  - platform: gpio #pin D4 for Led1 
+    pin: GPIO2  #D4 - internal LED "Heart beating"
     id: led1_output
-    inverted: false
-              #if (id(Binary_sensor_inversion).state) 
-              #{return "true";
-              #} else {return "false";
-              #} 
-  - platform: gpio
+    inverted: true
+               
+  - platform: gpio #pin D5 for Led2
     pin: GPIO5
     id: led2_output
-    inverted: true #if true LED is on when Grid is Absent OK!
-          
+    inverted: true           
 
-light:
+light: #components for LED's turn ON and OFF
   - platform: binary
-    name: "Led1"
+    name: "Led1 - 'Heart beating'"
+    internal: true #Not shown on Webserver 8080
     id: Led1
     #pin: GPIO2
     output: led1_output
@@ -115,15 +101,14 @@ light:
     
 time:
   - platform: sntp
-    # ...
     on_time:
-      # Every  seconds
-      - seconds: /1
+      - seconds: /1  #every second
         then: 
-        #C++ lambda inserted
           - logger.log:
-              format: "global_var_flashing %.1f and global_var_int1 %.1f"
-              args: [ 'id(global_var_flashing)', 'id(global_var_int1)' ]
+              format: "global_var_flashing %i and global_var_int1 %i and gridsensor %i"
+              args: [ 'id(global_var_flashing)', 'id(global_var_int1)', 'id(Binary_sensor_grid_status).state' ]
+          - script.execute: 
+              id: script1    
           - lambda: |-
                       if (id(global_var_flashing) == 1  ) 
                       {
@@ -139,86 +124,41 @@ time:
                             call2.perform();
                         }
                       } else { 
-                          id(script1).execute();  
-                      }       
-                  
-          - logger.log: "global_var_int1,  id(global_var_int1)"    
+                          auto call2 = id(Led2).turn_off();
+                          call2.perform(); 
+                          //uncoment for call script from lambda #id(script1).execute();  
+                      }
 
 http_request:
   useragent: esphome/device
   timeout: 10s
   verify_ssl: false
 
-
 binary_sensor:
   - platform: gpio
     internal: false
-    name: "Sensor1_grid_is_absent"
-    pin:
-      #number: GPIO12 - D6
-      number: GPIO12
+    name: "Pin_D6input_Sensore_grid_absent"
+    pin:  #pullup: true - ???? is present on esp8266 ?
+      number: GPIO12  #number: GPIO12 - D6
       inverted: false
-      #
     id: Binary_sensor_grid_status
     filters:
-      delayed_on_off: 10000ms
-#on state
+      delayed_on_off: 10000ms #antibounce
     on_state:
       then:
-        #- light.turn_on: Led2
-        #- delay: 1s
-        #- light.turn_off: Led2
-        #- delay: 1s 
-#end of state    
-
-    on_press:
-    #  min_length: 150ms
-    #  max_length: 5s
-      then:
-        #- switch.toggle: pym_output_relay send http
-        #- lambda: |
-        #    if (id(Binary_sensor_inversion).state) 
-        #        { auto call = id(Led1).turn_off();
-        #          call.perform();
-        #          auto call2 = id(Led1).turn_off();
-        #          call2.perform();
-        #        } else { auto call = id(Led1).turn_on();
-        #          call.perform();
-        #          auto call2 = id(Led1).turn_on();
-        #          call2.perform();
-        #        }
-        #- light.turn_on: Led1
+    on_press: #grid is absent . input pin state == 1 (without inversion)
+      then: #may be called send script instead next code
         - http_request.post:
             url: "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage"
             headers:
               Content-Type: application/json
             json:
               chat_id: ${chat_id}
-              text: "Grid is OFF 😠"
-              #text: !lambda |-
-              #  if (id(Binary_sensor_inversion).state) 
-              #  {return "Grid is ON 😀";
-              #  } else {return "Grid is OFF 😠";
-              #  } 
+              text: "Grid is OFF 😠" 
         - lambda: |-
             id(global_var_flashing) = 1;      
     on_release:
-    #  min_length: 150ms
-    #  max_length: 5s
-      then:
-        #- switch.toggle: pym_output_relay send http
-        #- lambda: |
-        #    if (id(Binary_sensor_inversion).state) 
-        #        { auto call = id(Led1).turn_on();
-        #          call.perform();
-        #          auto call2 = id(Led1).turn_on();
-        #          call2.perform();
-        #        } else { auto call = id(Led1).turn_off();
-        #          call.perform();
-        #          auto call2 = id(Led1).turn_off();
-        #          call2.perform();
-        #        }
-        #- light.turn_off: Led1
+      then: #may be called send script instead next code
         - http_request.post:
             url: "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage"
             headers:
@@ -226,45 +166,19 @@ binary_sensor:
             json:
               chat_id: ${chat_id}
               text: "Grid is ON 😀"
-              #text: !lambda |-
-              #  if (id(Binary_sensor_inversion).state) 
-              #  {return "Grid is OFF 😠";
-              #  } else {return "Grid is ON 😀";
-              #  } 
-              #text: "Grid is ON 😀"
         - lambda: |-
             id(global_var_flashing) = 0;      
-  #- platform: gpio
-  #  internal: false
-  #  name: "inversion"
-  #  pin:
-  #    #number: GPIO14 - D5
-  #    number: GPIO14
-  #    inverted: false
-      #
-  #  id: Binary_sensor_inversion
-  #  filters:
-  #    delayed_on_off: 1000ms
-  #  #on_press:
-  #  #  #  min_length: 150ms
-  #  #  #  max_length: 5s
-  #  #  then:
-  #  #      #- switch.toggle: pym_output_relay send http  
-  #  #on_release:
-  #  #  #  min_length: 150ms
-  #  #  #  max_length: 5s
-  #  #  then:
-  #  #    #- switch.toggle: pym_output_relay send http
-
+  
 script:
   - id: script1
   #  parameters:
   #    delay_ms: int
+    mode: restart
     then:
-      - light.turn_on: Led2
-      - delay: 5ms
-      - light.turn_off: Led2
-  - id: send_rebooted
+      - light.turn_on: Led1
+      - delay: 20ms
+      - light.turn_off: Led1
+  - id: send_rebooted #script2 run steps after (on) reboot device 
     then:
       - http_request.post:
           url: "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage"
@@ -272,18 +186,24 @@ script:
             Content-Type: application/json
           json:
             chat_id: ${chat_id}
-            text: "Rebooted!!!"       
-
-switch:
+            text: !lambda |-
+                    if (id(Binary_sensor_grid_status).state) {
+                    id(global_var_flashing) = 1;
+                    return "⚠️ Check Device! It is Rebooted!!! Grid is OFF😠!!!" ;
+                    } else {
+                    id(global_var_flashing) = 0;
+                    return "⚠️ Check Device! It is Rebooted!!! Grid is ON😀!!!" ;
+                    }
+                   
+switch:  #swith "Inversion". May be used in future projects
   - platform: gpio
     pin: GPIO14
     id: inverse
-    name: "Grid_sensore inversion"
+    name: "Switch_Grid_sensore_inversion_pin_outputD5"
     restore_mode: RESTORE_DEFAULT_OFF
 
 web_server: 
   port: 8080
   auth:
     username: admin
-    password: admin
-    
+    password: 1111qQ1111qQ
