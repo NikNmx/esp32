@@ -54,7 +54,7 @@ globals:
      type: int
      restore_value: no
      initial_value: "1"
-                  
+              
 
 # Enable API  # Does not use in this configuration.
 #api:
@@ -104,30 +104,37 @@ time:
     on_time:
       - seconds: /1  #every second
         then: 
-          - logger.log:
-              format: "global_var_flashing %i and global_var_int1 %i and gridsensor %i"
-              args: [ 'id(global_var_flashing)', 'id(global_var_int1)', 'id(Binary_sensor_grid_status).state' ]
-          - script.execute: 
-              id: script1    
           - lambda: |-
-                      if (id(global_var_flashing) == 1  ) 
-                      {
-                        if (id(global_var_int1) != 0) 
-                        {
-                          //# global value is 0
-                          id(global_var_int1) = 0;
-                          auto call2 = id(Led2).turn_on();
-                          call2.perform();
-                        } else {
-                            id(global_var_int1) = 1;
-                            auto call2 = id(Led2).turn_off();
-                            call2.perform();
-                        }
-                      } else { 
-                          auto call2 = id(Led2).turn_off();
-                          call2.perform(); 
-                          //uncoment for call script from lambda #id(script1).execute();  
+                      if (id(script1).is_running()) {
+                      
+                      } else {
+                      ESP_LOGI("main", "Heart beating OK!");
+                      id(script1).execute();
                       }
+                      if (id(global_var_flashing) == 1 ) {
+                      id(script2).execute();
+                      }
+
+#                      //#if (id(script1_flag) == 0 ) {
+#                      //#id(script1).execute();
+#                      if (id(global_var_flashing) == 1  ) 
+#                      {
+#                        if (id(global_var_int1) != 0) 
+#                        {
+#                          //# global value is 0
+#                          id(global_var_int1) = 0;
+#                          auto call2 = id(Led2).turn_on();
+#                          call2.perform();
+#                        } else {
+#                           id(global_var_int1) = 1;
+#                            auto call2 = id(Led2).turn_off();
+#                            call2.perform();
+#                        }
+#                      } else { 
+#                          auto call2 = id(Led2).turn_off();
+#                          call2.perform(); 
+#                          //uncoment for call script from lambda #id(script1).execute();  
+#                      }
 
 http_request:
   useragent: esphome/device
@@ -170,14 +177,36 @@ binary_sensor:
             id(global_var_flashing) = 0;      
   
 script:
-  - id: script1
+  - id: script1  #heart beating 1 per 10 sec
   #  parameters:
   #    delay_ms: int
-    mode: restart
+    mode: single #restart
     then:
+      #- lambda : |-
+      #             id(script1_flag) = 1;
+
       - light.turn_on: Led1
       - delay: 20ms
       - light.turn_off: Led1
+      - delay: 10s
+      - logger.log:
+              format: "!!!global_var_flashing %i and global_var_int1 %i and gridsensor %i"
+              args: [ 'id(global_var_flashing)', 'id(global_var_int1)', 'id(Binary_sensor_grid_status).state' ]    
+      #- lambda : |-
+      #             id(script1_flag) = 0;
+  - id: script2  #Led2 (Grid is absent) fast blinking 2 times per second.
+    mode: restart
+    then:
+      #- lambda : |-
+      #             id(script1_flag) = 1;
+      - light.turn_on: Led2
+      - delay: 240ms
+      - light.turn_off: Led2
+      - delay: 240ms
+      - light.turn_on: Led2
+      - delay: 240ms
+      - light.turn_off: Led2
+      - delay: 240ms
   - id: send_rebooted #script2 run steps after (on) reboot device 
     then:
       - http_request.post:
