@@ -25,7 +25,7 @@ esphome:
             - delay: 100ms
             - light.turn_off: Led1
             - delay: 100ms      
-      - delay: 20s # because flashinf is continue during boot process.  
+      - delay: 2s # because flashinf is continue during boot process.  
       - logger.log:
           format: "!!!boot_var_flash %i and bootSensor1_grid  %i"
           args: [ 'id(global_var_flashing)', 'id(Binary_sensor_grid_status).state' ]
@@ -76,8 +76,10 @@ wifi:
 captive_portal:
 
 output:
-  - platform: gpio #pin D4 for Led1 
-    pin: GPIO2  #D4 - internal LED "Heart beating"
+  - platform: esp8266_pwm #pin D4 for Led1 
+    pin: 
+      number: GPIO2  #D4 - internal LED "Heart beating"
+      mode: output 
     id: led1_output
     inverted: true
                
@@ -87,12 +89,14 @@ output:
     inverted: true           
 
 light: #components for LED's turn ON and OFF
-  - platform: binary
+  - platform: rgb
     name: "Led1 - 'Heart beating'"
-    internal: true #Not shown on Webserver 8080
+    #internal: true #Not shown on Webserver 8080
     id: Led1
     #pin: GPIO2
-    output: led1_output
+    blue: led1_output
+    red: led1_output
+    green: led1_output
   - platform: binary
     name: "Led2"
     id: Led2
@@ -161,7 +165,7 @@ binary_sensor:
               Content-Type: application/json
             json:
               chat_id: ${chat_id}
-              text: "Grid is OFF 😠" 
+              text: "Grid is OFF!!! 😠" 
         - lambda: |-
             id(global_var_flashing) = 1;      
     on_release:
@@ -172,7 +176,7 @@ binary_sensor:
               Content-Type: application/json
             json:
               chat_id: ${chat_id}
-              text: "Grid is ON 😀"
+              text: "Grid is ON! 😀"
         - lambda: |-
             id(global_var_flashing) = 0;      
   
@@ -186,9 +190,29 @@ script:
       #             id(script1_flag) = 1;
 
       - light.turn_on: Led1
-      - delay: 20ms
-      - light.turn_off: Led1
-      - delay: 10s
+      - light.turn_on:
+          id: Led1
+          brightness: 0%
+          red: 100%
+          green: 10%
+          blue: 1
+      - delay: 2s
+      - light.turn_on:
+          id: Led1
+          brightness: 100%
+          red: 20%
+          green: 20%
+          blue: 20%
+      - delay: 2s
+      - light.turn_on:
+          id: Led1
+          brightness: 0%
+          red: 30%
+          green: 30%
+          blue: 30%
+      - delay: 2s
+      #- light.turn_off: Led1
+      #- delay: 3s
       - logger.log:
               format: "!!!global_var_flashing %i and global_var_int1 %i and gridsensor %i"
               args: [ 'id(global_var_flashing)', 'id(global_var_int1)', 'id(Binary_sensor_grid_status).state' ]    
