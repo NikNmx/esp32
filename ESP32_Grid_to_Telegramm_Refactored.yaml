@@ -26,10 +26,10 @@ esphome:
             - delay: 100ms
             - light.turn_off: Led1
             - delay: 100ms      
-      - delay: 20s # because flashinf is continue during boot process.  
-      - logger.log:
-          format: "!!!boot_var_flash %i and bootSensor1_grid  %i and switch1_inversion %i"
-          args: [ 'id(global_var_flashing)', 'id(Binary_sensor_grid_status).state', 'id(switch1_inversion).state' ]
+      - delay: 2s # because flashinf is continue during boot process.  
+      #- logger.log:
+      #    format: "!!!boot_var_flash %i and bootSensor1_grid  %i and switch1_inversion %i"
+      #    args: [ 'id(global_var_flashing)', 'id(Binary_sensor_grid_status).state', 'id(switch1_inversion).state' ]
       #- lambda : |-
       #            if (id(Binary_sensor_grid_status).state) {
       #            id(global_var_flashing) = 1;
@@ -51,7 +51,7 @@ logger:
 
 globals:
 #blink couter 
-   - id: global_var_grid_OK #it is for blinking, may be replaced for static lambda variable
+   - id: global_var_grid_OK # "0" - Grid is absent, "1" - Grid is Present.
      type: int
      restore_value: no
      initial_value: "0"
@@ -61,13 +61,13 @@ globals:
      initial_value: "1"
               
 
-# Enable API  # Does not use in this configuration.
-#api:
-#  password: "1234567890"
+# Enable API  
+api:
+  password: "1111qQ1111qQ,@,@"
 
-ota: # maybe used in fallback ap portal. I'm not sure.
+ota:      # 
   - platform: esphome
-    password: "1234567890"
+    password: "1111qQ1111qQ,@,@"
 
 wifi:
   ssid: "esptool"
@@ -82,13 +82,12 @@ captive_portal:
 
 output:
   - platform: esp8266_pwm #pin D4 for Led1 
-    pin: GPIO2  #D4 - internal LED "Heart beating"
+    pin: GPIO2  #GPIO2- D4  - internal LED "Heart beating"
     #mode: output
     frequency: 1000 Hz 
     id: led1_output
-    inverted: true
-               
-  - platform: gpio #pin D5 for Led2
+    inverted: true               
+  - platform: gpio #GPIO5 pin D1 for Led2
     pin: GPIO5
     id: led2_output
     inverted: true           
@@ -120,8 +119,8 @@ time:
                       id(script2_Led2_fast_blinking).execute();
                       }
           #- logger.log:
-          #    format: "!!!boot_var_flash %i and bootSensor1_grid  %i and switch1_inversion %i"
-          #    args: [ 'id(global_var_flashing)', 'id(Binary_sensor_grid_status).state', 'id(switch1_inversion).state' ]
+          #    format: "!!!Sensor1_grid  %i and switch1_inversion %i"
+          #    args: [ 'id(Binary_sensor_grid_status).state', 'id(switch1_inversion).state' ]
       
 #                          //uncoment for call script from lambda #id(script1).execute();  
 #              
@@ -134,33 +133,36 @@ http_request:
 binary_sensor:
   - platform: gpio
     internal: false
-    name: "Pin_D6input_Sensore_Grid_Status_Flag"
+    name: "D6_GPIO12_Input_Grid_Status"
     pin:  #pullup: true - ???? is present on esp8266 ?
-      number: GPIO12  #number: GPIO12 - D6
+      number: D6  #number: GPIO12 - D6
       inverted: false #for Deye must be "false"
+      mode:
+        input: true
+        #pullup: true  Added 1kohm to 3,3v
     id: Binary_sensor_grid_status
     filters:
-      delayed_on_off:   #or option delayed_on_off: 10000ms #antibounce
-        time_on: 10s
-        time_off: 10s 
-    on_state:
-      then:
+      delayed_on_off: 10000ms 
+        #time_on: 10s
+        #time_off: 10s 
+    #on_state:
+    #  then:
     on_press: #grid is absent . input pin state == 1 (without inversion)
-      then: #may be called send script instead next code
+      then: 
         - script.execute: script_grid_status
         - delay: 1s
         - script.execute: script_send_message      
     on_release:
-      then: #may be called send script instead next code        
+      then:         
         - script.execute: script_grid_status
         - delay: 1s
         - script.execute: script_send_message  
   
 script:
-  - id: script1  #heart beating 1 per 10 sec
+  - id: script1  #heart beating 1 per 10 sec Led1 + Log message
   #  parameters:
   #    delay_ms: int
-    mode: single
+    mode: single # 
     then:
       #- lambda : |-
       #             id(script1_flag) = 1;
@@ -180,9 +182,9 @@ script:
           id: Led1
           brightness: 0%
       - delay: 2s
-      - logger.log:
-              format: "!!!global_var_flashing %i and global_var_grid_OK %i and gridsensor %i"
-              args: [ 'id(global_var_flashing)', 'id(global_var_grid_OK)', 'id(switch1_inversion).state' ]          
+      #- logger.log:
+      #        format: "!!!global_var_flashing %i and global_var_grid_OK %i and gridsensor %i"
+      #        args: [ 'id(global_var_flashing)', 'id(global_var_grid_OK)', 'id(switch1_inversion).state' ]          
   
   - id: script2_Led2_fast_blinking  #Led2 (Grid is absent) fast blinking 2 times per second.
     mode: restart
@@ -249,7 +251,7 @@ script:
 
 switch:  #swith "Inversion". Must be "off " for deye and reley to ground when Grid is off. 
   - platform: gpio
-    pin: GPIO14
+    pin: D5     ##GPIO14 D5
     id: switch1_inversion
     name: "Switch1 - Grid_sensore_inversion_state"
     restore_mode: RESTORE_DEFAULT_OFF
@@ -258,4 +260,4 @@ web_server:
   port: 8080
   auth:
     username: admin
-    password: 1111qQ1111qQ
+    password: 1111qQ1111qQ,@,@
