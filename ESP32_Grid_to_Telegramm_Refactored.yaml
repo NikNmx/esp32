@@ -40,7 +40,7 @@ esphome:
       - lambda: |-
                  auto currenttime = id(sntp_time).now();
                  ESP_LOGI("main", "Current hour is : %i", currenttime.hour );
-                 if (currenttime.hour > 7 && currenttime.hour< 21) {
+                 if (currenttime.hour > 7 && currenttime.hour < 21) {
                   id(script_send_rebooted).execute();
                  } 
 
@@ -55,7 +55,7 @@ preferences:
 
 # Enable logging DEBUG, WARNING, INFO
 logger:
-  level: DEBUG
+  level: INFO
 globals:
 #blink couter 
    - id: global_var_grid_OK # "0" - Grid is absent, "1" - Grid is Present.
@@ -117,14 +117,20 @@ time:
       - seconds: /1  #every second
         then: 
           - lambda: |-
+                      auto currenttime = id(sntp_time).now();
                       if (id(script1).is_running()) {
-                      
                       } else {
                       ESP_LOGI("main", "Heart beating OK!");
+                      ESP_LOGI("main", "Grid_status_variable : %i", id(global_var_grid_OK));
+                      //ESP_LOGI("main", "Current time is : %i", currenttime.day_of_month, "/%i", currenttime.month, "/%i", currenttime.year, "/%i" ,currenttime:hour, "/%i" ,currenttime.minute );
+                      ESP_LOGI("main", "Current time is : %i/%i/%i %i:%i:%i", currenttime.day_of_month, currenttime.month, currenttime.year, currenttime.hour, currenttime.minute, currenttime.second);
                       id(script1).execute();
                       }
                       if (id(global_var_flashing) == 1 ) {
-                      id(script2_Led2_fast_blinking).execute();
+                       if (id(script2_Led2_fast_blinking).is_running()) {
+                        } else {
+                        id(script2_Led2_fast_blinking).execute();
+                        }
                       }
       - seconds: 0
         minutes: 30
