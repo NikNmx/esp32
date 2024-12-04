@@ -44,7 +44,7 @@ esp8266:
   restore_from_flash: true
 
 preferences:
-    flash_write_interval: 1min
+  flash_write_interval: 10 min
 
 # Enable logging DEBUG, WARNING, INFO
 logger:
@@ -218,10 +218,10 @@ script:
             text: !lambda |-
                     if (id(global_var_grid_OK) ) {
                     id(global_var_flashing) = 0;
-                    return " ⚠️ Check Device! It is Rebooted!!! Grid is ON😀!!!" ;
+                    return " ⚠️ Status_Check!!! Grid is ON😀!!!" ;
                     } else {
                     id(global_var_flashing) = 1;
-                    return " ⚠️ Check Device! It is Rebooted!!! Grid is OFF😠!!!" ;
+                    return " ⚠️ Status_Chek!!! Grid is OFF😠!!!" ;
                     }
   
   - id: script_send_message # run steps after (on) reboot device 
