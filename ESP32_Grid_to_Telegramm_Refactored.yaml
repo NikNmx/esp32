@@ -288,11 +288,15 @@ script:
   
 
 switch:  #swith "Inversion". Must be "off " for deye and reley to ground when Grid is off. 
-  - platform: gpio
-    pin: D5     ##GPIO14 D5
+  - platform: template
+    #pin: D5     ##GPIO14 D5
     id: switch1_inversion
     name: "Switch1 - Grid_sensore_inversion_state"
     #restore_mode: RESTORE_DEFAULT_OFF
+    turn_on_action:
+       - delay: 1s
+    turn_off_action:
+       - delay: 1s
 
 web_server: 
   port: 8080
