@@ -27,7 +27,7 @@ esphome:
             - light.turn_off: Led1
             - delay: 100ms      
       - delay: 2s # because flashinf is continue during boot process.  
-      #- logger.log:
+      - logger.log: "INFORMATION: Device has REBOOTED!!!"
       #    format: "!!!boot_var_flash %i and bootSensor1_grid  %i and switch1_inversion %i"
       #    args: [ 'id(global_var_flashing)', 'id(Binary_sensor_grid_status).state', 'id(switch1_inversion).state' ]
       #- lambda : |-
@@ -37,14 +37,21 @@ esphome:
       #            id(global_var_flashing) = 0;
       #            }
       - script.execute: script_grid_status            
-      - script.execute: script_send_rebooted # script steps after reboot
+      - lambda: |-
+                 auto currenttime = id(sntp_time).now();
+                 ESP_LOGI("main", "Current hour is : %i", currenttime.hour );
+                 if (currenttime.hour > 7 && currenttime.hour< 21) {
+                  id(script_send_rebooted).execute();
+                 } 
+
+      #- script.execute: script_send_rebooted # script steps after reboot
 
 esp8266:
   board: d1_mini
-  restore_from_flash: true
+  restore_from_flash: false
 
 preferences:
-  flash_write_interval: 10 min
+#  flash_write_interval: 10 min
 
 # Enable logging DEBUG, WARNING, INFO
 logger:
@@ -105,6 +112,7 @@ light: #components for LED's turn ON and OFF
     
 time:
   - platform: sntp
+    id: sntp_time
     on_time:
       - seconds: /1  #every second
         then: 
@@ -218,10 +226,10 @@ script:
             text: !lambda |-
                     if (id(global_var_grid_OK) ) {
                     id(global_var_flashing) = 0;
-                    return " ⚠️ Status_Check!!! Grid is ON😀!!!" ;
+                    return " ⚠️ StatusCheck! Grid is ON😀!!!" ;
                     } else {
                     id(global_var_flashing) = 1;
-                    return " ⚠️ Status_Chek!!! Grid is OFF😠!!!" ;
+                    return " ⚠️ StatusChek! Grid is OFF😠!!!" ;
                     }
   
   - id: script_send_message # run steps after (on) reboot device 
@@ -278,7 +286,7 @@ switch:  #swith "Inversion". Must be "off " for deye and reley to ground when Gr
     pin: D5     ##GPIO14 D5
     id: switch1_inversion
     name: "Switch1 - Grid_sensore_inversion_state"
-    restore_mode: RESTORE_DEFAULT_OFF
+    #restore_mode: RESTORE_DEFAULT_OFF
 
 web_server: 
   port: 8080
