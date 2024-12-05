@@ -26,7 +26,7 @@ esphome:
             - delay: 100ms
             - light.turn_off: Led1
             - delay: 100ms      
-      - delay: 2s # because flashinf is continue during boot process.  
+      - delay: 30s # because flashinf is continue during boot process.  
       - logger.log: "INFORMATION: Device has REBOOTED!!!"
       #    format: "!!!boot_var_flash %i and bootSensor1_grid  %i and switch1_inversion %i"
       #    args: [ 'id(global_var_flashing)', 'id(Binary_sensor_grid_status).state', 'id(switch1_inversion).state' ]
@@ -292,7 +292,7 @@ switch:  #swith "Inversion". Must be "off " for deye and reley to ground when Gr
     #pin: D5     ##GPIO14 D5
     id: switch1_inversion
     name: "Switch1 - Grid_sensore_inversion_state"
-    #restore_mode: RESTORE_DEFAULT_OFF
+    restore_mode: ALWAYS_OFF  #was RESTORE_DEFAULT_OFF - flash restore disabled now
     turn_on_action:
        - delay: 1s
     turn_off_action:
