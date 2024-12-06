@@ -20,7 +20,7 @@ esphome:
     priority: -100  # -100 is after reboot and settings WIFI + Pins
     then:    #setup some global variables
       - repeat:    #5 Led1 blinks afrter reboot
-          count: 5
+          count: 30
           then:
             - light.turn_on: Led1
             - delay: 100ms
@@ -41,6 +41,7 @@ esphome:
                  auto currenttime = id(sntp_time).now();
                  ESP_LOGI("main", "Current hour is : %i", currenttime.hour );
                  if (currenttime.hour > 7 && currenttime.hour < 21) {
+                  id(script_grid_status).execute();
                   id(script_send_rebooted).execute();
                  } 
 
@@ -68,7 +69,8 @@ globals:
      initial_value: "1"
               
 
-# Enable API  
+# Enable API  . For further projects use the structure [ api: encription: key:"" ]
+#instead [api: password: ""]
 api:
   password: "1111qQ1111qQ,@,@"
 
@@ -125,6 +127,7 @@ time:
                       //ESP_LOGI("main", "Current time is : %i", currenttime.day_of_month, "/%i", currenttime.month, "/%i", currenttime.year, "/%i" ,currenttime:hour, "/%i" ,currenttime.minute );
                       ESP_LOGI("main", "Current time is : %i/%i/%i %i:%i:%i", currenttime.day_of_month, currenttime.month, currenttime.year, currenttime.hour, currenttime.minute, currenttime.second);
                       id(script1).execute();
+                      id(script_grid_status).execute();
                       }
                       if (id(global_var_flashing) == 1 ) {
                        if (id(script2_Led2_fast_blinking).is_running()) {
@@ -156,7 +159,7 @@ binary_sensor:
     internal: false
     name: "D6_GPIO12_Input_Grid_Status"
     pin:  #pullup: true - ???? is present on esp8266 ?
-      number: D6  #number: GPIO12 - D6
+      number: D2  #number: GPIO12 - D6
       inverted: false #for Deye must be "false"
       mode:
         input: true
@@ -223,6 +226,7 @@ script:
   
   - id: script_send_rebooted # run steps after (on) reboot device 
     then:
+      - script.execute: script_grid_status
       - http_request.post:
           url: "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage"
           headers:
@@ -230,16 +234,19 @@ script:
           json:
             chat_id: ${chat_id}
             text: !lambda |-
-                    if (id(global_var_grid_OK) ) {
+                    if (id(Binary_sensor_grid_status).state ^ id(switch1_inversion).state ) {
+                    //#if (id(global_var_grid_OK) ) {
                     id(global_var_flashing) = 0;
-                    return " ⚠️ StatusCheck! Grid is ON😀!!!" ;
+                    return " ⚠️ StatusCheck! R: Grid is ON😀!!!" ;
                     } else {
                     id(global_var_flashing) = 1;
-                    return " ⚠️ StatusChek! Grid is OFF😠!!!" ;
+                    return " ⚠️ StatusChek! R: Grid is OFF😠!!!" ;
                     }
   
   - id: script_send_message # run steps after (on) reboot device 
     then:
+      - script.execute: script_grid_status
+      - delay: 1s
       - http_request.post:
           url: "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage"
           headers:
@@ -256,6 +263,7 @@ script:
                     }                  
 
   - id: script_grid_status 
+    mode: restart
     #writes to $global_var_grid_OK "1" if grid OK, else writes "0"                 
     then:
       - lambda: |-
@@ -263,7 +271,6 @@ script:
                 if (id(Binary_sensor_grid_status).state ^ id(switch1_inversion).state ) {
                   id(global_var_grid_OK) = 1;
                   id(global_var_flashing) = 0;
-
                 } else {
                   id(global_var_grid_OK) = 0;
                   id(global_var_flashing) = 1;
