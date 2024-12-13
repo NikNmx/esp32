@@ -85,12 +85,12 @@ ota:      #
     password: "1111qQ1111qQ,@,@"
 
 wifi:
-  ssid: "esptool"
-  password: "1111qQ1111qQ,@,@"
+  ssid: !secret wifi_ssid #"TP-LINK_5F1E"
+  password: !secret wifi_password
 
   # Enable fallback hotspot (captive portal) in case wifi connection fails
   ap:
-    ssid: "ap_buro_grid"
+    ssid: "ap_220gridsensore"
     password: "1111qQ1111qQ,@,@"
 
 captive_portal:
@@ -263,10 +263,10 @@ script:
             text: !lambda |-
                     if (id(global_var_grid_OK) ) {
                     id(global_var_flashing) = 0;
-                    return " ✅Grid is ON😀!!!" ;
+                    return " ✅Мережа 220 присутня😀!!!" ;
                     } else {
                     id(global_var_flashing) = 1;
-                    return " ❌Grid is OFF😠!!!" ;
+                    return " ❌Мережа 220 вимкнена😠!!!" ;
                     }                  
 
   - id: script_grid_status 
@@ -282,7 +282,7 @@ script:
                   id(global_var_grid_OK) = 0;
                   id(global_var_flashing) = 1;
                 }
-
+#disabled 
   - id: script_everyday_control_message # run every day at 8:30AM
     then:
       - http_request.post:
