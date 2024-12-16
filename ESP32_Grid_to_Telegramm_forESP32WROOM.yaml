@@ -1,0 +1,351 @@
+#GPIO12 - D6 - grid binary_sensore "0" - Grid is available (220V), 
+#"1" - Grid is absent (0V)
+#
+#GPIO14 - D5 binary conf pin . Programm Inversion for Input D6
+#if = "1" - GPIO12 -D6 is inverted
+#grid binary_sensore "0" - Grid is absent (0V), 
+#"1" - Grid is available (220V)
+#
+#GPIO2 - D4 - Internal Led (id="Led1) inverted:true
+#GPIO5 - D1 - External Led (id="Led2) inverted:true
+substitutions:
+  TELEGRAM_BOT_TOKEN: !secret sTELEGRAM_BOT_TOKEN
+  chat_id: !secret schat_id
+  debug_TELEGRAM_BOT_TOKEN: !secret dTELEGRAM_BOT_TOKEN
+  debug_chat_id: !secret dchat_id
+  trigger1: "1"  #only for debug
+  apikey: !secret sapikey
+
+esphome:
+  name: 220gridsensor
+  friendly_name: 220gridsensor
+  on_boot:
+    priority: -100  # -100 is after reboot and settings WIFI + Pins
+    then:    #setup some global variables
+      - repeat:    #5 Led1 blinks afrter reboot
+          count: 30
+          then:
+            - light.turn_on: Led1
+            - delay: 100ms
+            - light.turn_off: Led1
+            - delay: 100ms      
+      - delay: 30s # because flashinf is continue during boot process.  
+      - logger.log: "INFORMATION: Device has REBOOTED!!!"
+      #    format: "!!!boot_var_flash %i and bootSensor1_grid  %i and switch1_inversion %i"
+      #    args: [ 'id(global_var_flashing)', 'id(Binary_sensor_grid_status).state', 'id(switch1_inversion).state' ]
+      #- lambda : |-
+      #            if (id(Binary_sensor_grid_status).state) {
+      #            id(global_var_flashing) = 1;
+      #            } else {
+      #            id(global_var_flashing) = 0;
+      #            }
+      - script.execute: script_grid_status            
+      - lambda: |-
+                 auto currenttime = id(sntp_time).now();
+                 ESP_LOGI("main", "Current hour is : %i", currenttime.hour );
+                 if (currenttime.hour > 7 && currenttime.hour < 21) {
+                  id(script_grid_status).execute();
+                  id(script_send_rebooted).execute();
+                 } 
+
+      #- script.execute: script_send_rebooted # script steps after reboot
+
+esp32:
+  board: esp32dev
+  framework:
+    type: arduino
+
+  #restore_from_flash: false
+
+preferences:
+  flash_write_interval: 10 min
+
+# Enable logging DEBUG, WARNING, INFO
+logger:
+  level: INFO
+globals:
+#blink couter 
+   - id: global_var_grid_OK # "0" - Grid is absent, "1" - Grid is Present.
+     type: int
+     restore_value: no
+     initial_value: "0"
+   - id: global_var_flashing # if == 1 , LED2 is blinking every 1s.
+     type: int
+     restore_value: no
+     initial_value: "1"
+              
+
+# Enable API  . For further projects use the structure [ api: encription: key:"" ]
+#instead [api: password: ""]
+api:
+  password: "1111qQ1111qQ,@,@"
+  reboot_timeout: 0s
+  #encryption:
+  #  key: ${apikey}
+
+ota:      # 
+  - platform: esphome
+    password: "1111qQ1111qQ,@,@"
+
+wifi:
+  ssid: !secret wifi_ssid #"TP-LINK_5F1E"
+  password: !secret wifi_password
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: "ap_220gridsensore"
+    password: "1111qQ1111qQ,@,@"
+
+captive_portal:
+
+output:
+  - platform: ledc #pin D4 for Led1 
+    pin: GPIO2  #GPIO2- D4  - internal LED "Heart beating"
+    #mode: output
+    frequency: 1000 Hz 
+    id: led1_output
+    inverted: true               
+  - platform: gpio #GPIO5 pin D1 for Led2
+    pin: GPIO5
+    id: led2_output
+    inverted: true           
+
+light: #components for LED's turn ON and OFF
+  - platform: monochromatic
+    name: "Led1 - 'Heart beating'"
+    internal: true #Not shown on Webserver 8080
+    id: Led1
+    output: led1_output
+  
+  - platform: binary
+    name: "Led2_Red_Light"
+    id: Led2
+    output: led2_output 
+    
+time:
+  - platform: sntp
+    id: sntp_time
+    on_time:
+      - seconds: /1  #every second
+        then: 
+          - lambda: |-
+                      auto currenttime = id(sntp_time).now();
+                      if (id(script1).is_running()) {
+                      } else {
+                      ESP_LOGI("main", "Heart beating OK!");
+                      ESP_LOGI("main", "Grid_status_variable : %i", id(global_var_grid_OK));
+                      //ESP_LOGI("main", "Current time is : %i", currenttime.day_of_month, "/%i", currenttime.month, "/%i", currenttime.year, "/%i" ,currenttime:hour, "/%i" ,currenttime.minute );
+                      ESP_LOGI("main", "Current time is : %i/%i/%i %i:%i:%i", currenttime.day_of_month, currenttime.month, currenttime.year, currenttime.hour, currenttime.minute, currenttime.second);
+                      id(script1).execute();
+                      id(script_grid_status).execute();
+                      }
+                      if (id(global_var_flashing) == 1 ) {
+                       if (id(script2_Led2_fast_blinking).is_running()) {
+                        } else {
+                        id(script2_Led2_fast_blinking).execute();
+                        }
+                      }
+      - seconds: 0
+        minutes: 30
+        hours: 8
+        #days_of_week: MON-SUN
+        then:
+          - script.execute: script_grid_status
+          - script.execute: script_everyday_control_message
+          #- logger.log:
+          #    format: "!!!Sensor1_grid  %i and switch1_inversion %i"
+          #    args: [ 'id(Binary_sensor_grid_status).state', 'id(switch1_inversion).state' ]
+      
+#                          //uncoment for call script from lambda #id(script1).execute();  
+#              
+
+http_request:
+  useragent: esphome/device
+  timeout: 10s
+  verify_ssl: false
+
+
+binary_sensor:
+  - platform: gpio
+    internal: false
+    name: "D2PIN_Input_Grid_Status"
+    pin:  #pullup: true - ???? is present on esp8266 ?
+      number: D2  #number: GPIO12 - D6
+      inverted: false #for Deye must be "false"
+      mode:
+        input: true
+        #pullup: true  Added 1kohm to 3,3v
+    id: Binary_sensor_grid_status
+    filters:
+      delayed_on_off: 10000ms 
+        #time_on: 10s
+        #time_off: 10s 
+    #on_state:
+    #  then:
+    on_press: #grid is absent . input pin state == 1 (without inversion)
+      then: 
+        - script.execute: script_grid_status
+        - delay: 1s
+        - script.execute: script_send_message      
+    on_release:
+      then:         
+        - script.execute: script_grid_status
+        - delay: 1s
+        - script.execute: script_send_message  
+  
+script:
+  - id: script1  #heart beating 1 per 10 sec Led1 + Log message
+  #  parameters:
+  #    delay_ms: int
+    mode: single # 
+    then:
+      #- lambda : |-
+      #             id(script1_flag) = 1;
+      - light.turn_on: Led1
+      - light.turn_on:
+          id: Led1
+          brightness: 0%
+          #red: 100% for rgb
+          #green: 10%
+          #blue: 1
+      - delay: 2s
+      - light.turn_on:
+          id: Led1
+          brightness: 100%
+      - delay: 2s
+      - light.turn_on:
+          id: Led1
+          brightness: 0%
+      - delay: 2s
+      #- logger.log:
+      #        format: "!!!global_var_flashing %i and global_var_grid_OK %i and gridsensor %i"
+      #        args: [ 'id(global_var_flashing)', 'id(global_var_grid_OK)', 'id(switch1_inversion).state' ]          
+  
+  - id: script2_Led2_fast_blinking  #Led2 (Grid is absent) fast blinking 2 times per second.
+    mode: restart
+    then:
+      #- lambda : |-
+      #             id(script1_flag) = 1;
+      - light.turn_on: Led2
+      - delay: 220ms
+      - light.turn_off: Led2
+      - delay: 220ms
+      - light.turn_on: Led2
+      - delay: 220ms
+      - light.turn_off: Led2
+      - delay: 220ms
+  
+  - id: script_send_rebooted # run steps after (on) reboot device 
+    then:
+      - script.execute: script_grid_status
+      - http_request.post:
+          url: "https://api.telegram.org/bot${debug_TELEGRAM_BOT_TOKEN}/sendMessage"
+          headers:
+            Content-Type: application/json
+          json:
+            chat_id: ${debug_chat_id}
+            text: !lambda |-
+                    if (id(Binary_sensor_grid_status).state ^ id(switch1_inversion).state ) {
+                    //#if (id(global_var_grid_OK) ) {
+                    id(global_var_flashing) = 0;
+                    return " ⚠️ StatusCheck! R: ✅Grid is ON😀!!!" ;
+                    } else {
+                    id(global_var_flashing) = 1;
+                    return " ⚠️ StatusChek! R: ❌Grid is OFF😠!!!" ;
+                    }
+  
+  - id: script_send_message # run steps after (on) reboot device 
+    then:
+      - script.execute: script_grid_status
+      - delay: 1s
+      - http_request.post:
+          url: "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage"
+          headers:
+            Content-Type: application/json
+          json:
+            chat_id: ${chat_id}
+            text: !lambda |-
+                    if (id(global_var_grid_OK) ) {
+                    id(global_var_flashing) = 0;
+                    return " ✅Мережа 220 присутня😀!!!" ;
+                    } else {
+                    id(global_var_flashing) = 1;
+                    return " ❌Мережа 220 вимкнена😠!!!" ;
+                    }                  
+
+  - id: script_grid_status 
+    mode: restart
+    #writes to $global_var_grid_OK "1" if grid OK, else writes "0"                 
+    then:
+      - lambda: |-
+                //# id(switch1_inversion).turn_off(); off inversion 
+                if (id(Binary_sensor_grid_status).state ^ id(switch1_inversion).state ) {
+                  id(global_var_grid_OK) = 1;
+                  id(global_var_flashing) = 0;
+                } else {
+                  id(global_var_grid_OK) = 0;
+                  id(global_var_flashing) = 1;
+                }
+#disabled 
+  - id: script_everyday_control_message # run every day at 8:30AM
+    then:
+      - http_request.post:
+          url: "https://api.telegram.org/bot${debug_TELEGRAM_BOT_TOKEN}/sendMessage"
+          headers:
+            Content-Type: application/json
+          json:
+            chat_id: ${debug_chat_id}
+            text: !lambda |-
+                           if (id(global_var_grid_OK) ) {
+                           id(global_var_flashing) = 0;
+                           return " ✅ Control message: Device's Status OK! ✅Grid is ON😀!!!" ;
+                           } else {
+                           id(global_var_flashing) = 1;
+                           return " ✅ Control message: Device's Status OK! ❌Grid is OFF😠!!!" ;
+                           }
+  
+
+
+
+switch:  #swith "Inversion". Must be "off " for deye and reley to ground when Grid is off. 
+  - platform: template
+    #pin: D5     ##GPIO14 D5
+    id: switch1_inversion
+    name: "!!! (Must be OFF for Deye) Grid_sensore_inversion"
+    restore_mode: ALWAYS_OFF  #was RESTORE_DEFAULT_OFF - flash restore disabled now
+    turn_on_action:
+       - delay: 1s
+    turn_off_action:
+       - delay: 1s
+
+web_server: 
+  port: 8080
+  auth:
+    username: admin
+    password: 1111qQ1111qQ,@,@
+  log: false
+  local: true
+
+
+#text:
+#  - platform: template
+#    name: "Message text"
+#    optimistic: true
+#    min_length: 0
+#    max_length: 100
+#    mode: text 
+#    restore_value: true
+#    initial_value: "Not Restored"
+
+#text_sensor:
+#  - platform: template
+#    internal: true
+#    name: "Template Text Sensor"
+#    lambda: |-
+#      return {"Hello World"};
+#    update_interval: 60s
+
+button:
+  - platform: restart
+    name: "!!!Attention_Reboot_Device_Button!!!" 
+    #icon: "mdi:emoticon-outline"
