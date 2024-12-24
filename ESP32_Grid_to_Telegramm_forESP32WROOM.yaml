@@ -1,20 +1,23 @@
-#GPIO12 - D6 - grid binary_sensore "0" - Grid is available (220V), 
+#This file for ESP32WROOM microcontroller
+#GPIO4  - grid binary_sensore "0" - Grid is available (220V), 
 #"1" - Grid is absent (0V)
 #
-#GPIO14 - D5 binary conf pin . Programm Inversion for Input D6
+#GPIOxx - binary conf pin . Programm Inversion for Input D6
 #if = "1" - GPIO12 -D6 is inverted
 #grid binary_sensore "0" - Grid is absent (0V), 
 #"1" - Grid is available (220V)
 #
-#GPIO2 - D4 - Internal Led (id="Led1) inverted:true
-#GPIO5 - D1 - External Led (id="Led2) inverted:true
+#GPIxx - Internal Led (id="Led1) inverted:true
+#GPIxx  - External Led (id="Led2) inverted:true
 substitutions:
-  TELEGRAM_BOT_TOKEN: !secret sTELEGRAM_BOT_TOKEN
-  chat_id: !secret schat_id
+  grid_sensore_pin: "GPIO4"
+  TELEGRAM_BOT_TOKEN: !secret dTELEGRAM_BOT_TOKEN
+  chat_id: !secret dchat_id
   debug_TELEGRAM_BOT_TOKEN: !secret dTELEGRAM_BOT_TOKEN
   debug_chat_id: !secret dchat_id
   trigger1: "1"  #only for debug
   apikey: !secret sapikey
+
 
 esphome:
   name: 220gridsensor
@@ -168,13 +171,13 @@ http_request:
 binary_sensor:
   - platform: gpio
     internal: false
-    name: "D2PIN_Input_Grid_Status"
+    name: "PIN_Input_Grid_Status"
     pin:  #pullup: true - ???? is present on esp8266 ?
-      number: D2  #number: GPIO12 - D6
+      number: ${grid_sensore_pin}  
       inverted: false #for Deye must be "false"
       mode:
         input: true
-        #pullup: true  Added 1kohm to 3,3v
+        pullup: true  #Added 1kohm to 3,3v
     id: Binary_sensor_grid_status
     filters:
       delayed_on_off: 10000ms 
@@ -248,10 +251,10 @@ script:
                     if (id(Binary_sensor_grid_status).state ^ id(switch1_inversion).state ) {
                     //#if (id(global_var_grid_OK) ) {
                     id(global_var_flashing) = 0;
-                    return " ⚠️ StatusCheck! R: ✅Grid is ON😀!!!" ;
+                    return " ⚠️ FT_StatusCheck! R: ✅Grid is ON😀!!!" ;
                     } else {
                     id(global_var_flashing) = 1;
-                    return " ⚠️ StatusChek! R: ❌Grid is OFF😠!!!" ;
+                    return " ⚠️ FT_StatusChek! R: ❌Grid is OFF😠!!!" ;
                     }
   
   - id: script_send_message # run steps after (on) reboot device 
@@ -267,10 +270,10 @@ script:
             text: !lambda |-
                     if (id(global_var_grid_OK) ) {
                     id(global_var_flashing) = 0;
-                    return " ✅Мережа 220 присутня😀!!!" ;
+                    return " ✅FT Мережа 220 присутня😀!!!" ;
                     } else {
                     id(global_var_flashing) = 1;
-                    return " ❌Мережа 220 вимкнена😠!!!" ;
+                    return " ❌FT Мережа 220 вимкнена😠!!!" ;
                     }                  
 
   - id: script_grid_status 
@@ -298,10 +301,10 @@ script:
             text: !lambda |-
                            if (id(global_var_grid_OK) ) {
                            id(global_var_flashing) = 0;
-                           return " ✅ Control message: Device's Status OK! ✅Grid is ON😀!!!" ;
+                           return " ✅ FT Control message: Device's Status OK! ✅Grid is ON😀!!!" ;
                            } else {
                            id(global_var_flashing) = 1;
-                           return " ✅ Control message: Device's Status OK! ❌Grid is OFF😠!!!" ;
+                           return " ✅ FT Control message: Device's Status OK! ❌Grid is OFF😠!!!" ;
                            }
   
 
