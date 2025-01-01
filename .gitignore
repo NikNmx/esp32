@@ -4,3 +4,6 @@
 /.esphome/
 /secrets.yaml
 /li.yaml
+.DS_Store
+!firmware.bin
+/build/
